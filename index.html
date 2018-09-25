@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Mastodon Public TL Viewer</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.17/vue.js"></script>
+        <style>
+            .toot-content .invisible {
+                visibility: inherit !important;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app" class="container">
+            <h1>Mastodon Public TL Viewer</h1>
+            <div>
+                <h2>Instance</h2>
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">https://</span>
+                    </div>
+                    <input type="text" class="form-control" placeholder="mstdn.example.com" v-model="instance">
+                </div>
+                <h2>Timeline Type</h2>
+                <select class="form-control" v-model="timelineType">
+                    <option>public</option>
+                    <option>tag</option>
+                </select>
+                <template v-if="timelineType === 'tag'">
+                    <h3>hashtag</h3>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text">#</span>
+                        </div>
+                        <input type="text" class="form-control" placeholder="hashtag" v-model="timelineTag">
+                    </div>
+                </template>
+                <h2>Options</h2>
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="isLocalOnly" v-model="paramsLocal">
+                    <label class="custom-control-label" for="isLocalOnly">local</label>
+                </div>
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="isMediaOnly" v-model="paramsOnlyMedia">
+                    <label class="custom-control-label" for="isMediaOnly">only_media</label>
+                </div>
+                <button class="btn btn-primary" @click="fetch">Fetch</button>
+            </div>
+            <div v-if="fetched">
+                <div v-for="post in posts" style="display: flex; margin-top: 4px; padding-top: 4px; border-top: solid 1px #888;">
+                    <img :src="post.account.avatar_static" style="width:48px;height:48px;"/>
+                    <div style="flex: 1;padding-left: 1em;">
+                        <div><a :href="post.account.url">{{ post.account.display_name }} <small>@{{ post.account.acct }}</small></a></div>
+                        <div class="toot-content" v-html="post.content"></div>
+                        <ul v-if="post.media_attachments.length">
+                            <li v-for="media in post.media_attachments">
+                                <a :href="media.url" target="_blank">
+                                    <div :style="{width: '100%', height: '5em', background: 'url('+ media.preview_url+')', backgroundSize: 'cover', backgroundPosition: '50%'}"></div>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            const app = new Vue({
+                el: "#app",
+                data: {
+                    instance: "",
+                    timelineType: "public",
+                    timelineTag: "",
+                    paramsLocal: false,
+                    paramsOnlyMedia: false,
+                    fetched: false,
+                    posts: [],
+                },
+                methods: {
+                    fetch() {
+                        var url = [
+                            "https://",
+                            this.instance,
+                            "/api/v1/timelines/",
+                            this.timelineType == "tag" ? "tag/"+encodeURIComponent(this.timelineTag) : this.timelineType,
+                        ].join("")
+                        var params = {
+                        }
+                        if (this.paramsLocal) params.local = 1
+                        if (this.paramsOnlyMedia) params.only_media = 1
+                        url += "?" + Object.entries(params).map(([n, v]) => [n, encodeURIComponent(v)].join("=")).join("&")
+                        fetch(url).then(r => r.json()).then(r => {
+                            this.fetched = true
+                            this.posts = r
+                            console.log(r)
+                        })
+                    }
+                }
+            })
+        </script>
+    </body>
+</html>
